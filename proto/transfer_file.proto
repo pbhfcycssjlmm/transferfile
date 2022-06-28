@@ -1,0 +1,12 @@
+﻿syntax = "proto3";
+package transferfile;
+service TransferFile {
+    rpc Upload(stream Chunk) returns (Reply) {}
+}
+message Chunk {
+    bytes buffer = 1;
+    string objectName=2;
+}
+message Reply {
+    int32 result = 1;
+}
