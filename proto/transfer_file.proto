@@ -1,5 +1,6 @@
 ﻿syntax = "proto3";
 package transferfile;
+option go_package = "./pb/transfer";
 service TransferFile {
     rpc Upload(stream Chunk) returns (Reply) {}
 }
