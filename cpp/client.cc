@@ -11,20 +11,48 @@
 using grpc::Channel;
 using grpc::ClientContext;
 using grpc::ClientWriter;
+using grpc::ClientReader;
 using grpc::Status;
 using transferfile::Chunk;
 using transferfile::Reply;
 using transferfile::TransferFile;
+using transferfile::DownloadRequest;
 #define CHUNK_SIZE 4096
 class TransferFileClient
 {
 public:
     TransferFileClient(std::shared_ptr<Channel> channel) : stub_(TransferFile::NewStub(channel)){};
     void Upload(std::string objectName,std::string filePath);
+    void Download(std::string objectName,std::string savePath);
 private:
     std::unique_ptr<TransferFile::Stub> stub_;
 };
 
+void TransferFileClient::Download(std::string objectName,std::string savePath)
+{
+    Chunk chunk;
+    std::ofstream outfile;
+    const char *data;
+    ClientContext context;
+    DownloadRequest downloadRequest;
+    downloadRequest.set_objectname(objectName);
+//    std::unique_ptr<ClientReader<Chunk>> Download(::grpc::ClientContext* context, const ::transferfile::DownloadRequest& request)
+    std::unique_ptr<ClientReader<Chunk>> reader(stub_->Download(&context,downloadRequest));
+    outfile.open(savePath, std::ofstream::out | std::ofstream::trunc | std::ofstream::binary);
+    while (reader->Read(&chunk)) {
+        data = chunk.buffer().c_str();
+        outfile.write(data, chunk.buffer().length());
+    }
+    long pos = outfile.tellp();
+    std::cout << "Client download:" << pos <<std::endl;
+    outfile.close();
+    Status status = reader->Finish();
+    if (status.ok()) {
+        std::cout << "Download rpc succeeded." << std::endl;
+    } else {
+        std::cout << "Download rpc failed." << std::endl;
+    }
+}
 void TransferFileClient::Upload(std::string objectName,std::string filePath)
 {
     Chunk chunk;
@@ -75,6 +103,7 @@ void TransferFileClient::Upload(std::string objectName,std::string filePath)
 }
 int main(int argc, char** argv){
     TransferFileClient guide(grpc::CreateChannel("localhost:50051", grpc::InsecureChannelCredentials()));
-    guide.Upload("short-5000.wav","../short-5000.wav");
+//    guide.Upload("short-5000.wav","../short-5000.wav");
+    guide.Download("short-5000.wav","../short-5000-download.wav");
     return 0;
 }

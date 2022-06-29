@@ -3,6 +3,7 @@ package transferfile;
 option go_package = "./pb/transfer";
 service TransferFile {
     rpc Upload(stream Chunk) returns (Reply) {}
+    rpc Download(DownloadRequest) returns (stream Chunk) {}
 }
 message Chunk {
     bytes buffer = 1;
@@ -10,4 +11,7 @@ message Chunk {
 }
 message Reply {
     int32 result = 1;
+}
+message DownloadRequest {
+    string objectName=1;
 }
