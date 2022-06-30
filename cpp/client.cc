@@ -17,7 +17,7 @@ using transferfile::Chunk;
 using transferfile::Reply;
 using transferfile::TransferFile;
 using transferfile::DownloadRequest;
-#define CHUNK_SIZE 4096
+#define CHUNK_SIZE 1048576
 class TransferFileClient
 {
 public:
@@ -39,11 +39,15 @@ void TransferFileClient::Download(std::string objectName,std::string savePath)
 //    std::unique_ptr<ClientReader<Chunk>> Download(::grpc::ClientContext* context, const ::transferfile::DownloadRequest& request)
     std::unique_ptr<ClientReader<Chunk>> reader(stub_->Download(&context,downloadRequest));
     outfile.open(savePath, std::ofstream::out | std::ofstream::trunc | std::ofstream::binary);
+    int recvLen = 0;
     while (reader->Read(&chunk)) {
         data = chunk.buffer().c_str();
         outfile.write(data, chunk.buffer().length());
+        recvLen = recvLen + chunk.buffer().length();
+        std::cout << "chunk.buffer().length():" << chunk.buffer().length() <<std::endl;
     }
     long pos = outfile.tellp();
+    std::cout << "Client recv:" << recvLen <<std::endl;
     std::cout << "Client download:" << pos <<std::endl;
     outfile.close();
     Status status = reader->Finish();
@@ -104,6 +108,6 @@ void TransferFileClient::Upload(std::string objectName,std::string filePath)
 int main(int argc, char** argv){
     TransferFileClient guide(grpc::CreateChannel("localhost:50051", grpc::InsecureChannelCredentials()));
 //    guide.Upload("short-5000.wav","../short-5000.wav");
-    guide.Download("short-5000.wav","../short-5000-download.wav");
+    guide.Download("short-5000.wav","../short-5000-download-from-cpp.wav");
     return 0;
 }

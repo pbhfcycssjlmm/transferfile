@@ -19,7 +19,7 @@ using transferfile::Chunk;
 using transferfile::Reply;
 using transferfile::DownloadRequest;
 using transferfile::TransferFile;
-#define CHUNK_SIZE 4096
+#define CHUNK_SIZE 1048576
 
 class TransferFileImpl final : public TransferFile::Service {
 public:
@@ -56,6 +56,7 @@ Status TransferFileImpl::Download(ServerContext* context,const DownloadRequest* 
             return Status::CANCELLED;
         }
         sendLen += infile.gcount();
+        std::cout << "infile.gcount():" << infile.gcount() <<std::endl;
     }
     std::cout << "Send file size:" << sendLen << std::endl;
     return Status::OK;

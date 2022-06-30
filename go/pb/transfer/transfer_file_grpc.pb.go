@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TransferFileClient interface {
 	Upload(ctx context.Context, opts ...grpc.CallOption) (TransferFile_UploadClient, error)
+	Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (TransferFile_DownloadClient, error)
 }
 
 type transferFileClient struct {
@@ -67,11 +68,44 @@ func (x *transferFileUploadClient) CloseAndRecv() (*Reply, error) {
 	return m, nil
 }
 
+func (c *transferFileClient) Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (TransferFile_DownloadClient, error) {
+	stream, err := c.cc.NewStream(ctx, &TransferFile_ServiceDesc.Streams[1], "/transferfile.TransferFile/Download", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &transferFileDownloadClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type TransferFile_DownloadClient interface {
+	Recv() (*Chunk, error)
+	grpc.ClientStream
+}
+
+type transferFileDownloadClient struct {
+	grpc.ClientStream
+}
+
+func (x *transferFileDownloadClient) Recv() (*Chunk, error) {
+	m := new(Chunk)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // TransferFileServer is the server API for TransferFile service.
 // All implementations must embed UnimplementedTransferFileServer
 // for forward compatibility
 type TransferFileServer interface {
 	Upload(TransferFile_UploadServer) error
+	Download(*DownloadRequest, TransferFile_DownloadServer) error
 	mustEmbedUnimplementedTransferFileServer()
 }
 
@@ -81,6 +115,9 @@ type UnimplementedTransferFileServer struct {
 
 func (UnimplementedTransferFileServer) Upload(TransferFile_UploadServer) error {
 	return status.Errorf(codes.Unimplemented, "method Upload not implemented")
+}
+func (UnimplementedTransferFileServer) Download(*DownloadRequest, TransferFile_DownloadServer) error {
+	return status.Errorf(codes.Unimplemented, "method Download not implemented")
 }
 func (UnimplementedTransferFileServer) mustEmbedUnimplementedTransferFileServer() {}
 
@@ -121,6 +158,27 @@ func (x *transferFileUploadServer) Recv() (*Chunk, error) {
 	return m, nil
 }
 
+func _TransferFile_Download_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(DownloadRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(TransferFileServer).Download(m, &transferFileDownloadServer{stream})
+}
+
+type TransferFile_DownloadServer interface {
+	Send(*Chunk) error
+	grpc.ServerStream
+}
+
+type transferFileDownloadServer struct {
+	grpc.ServerStream
+}
+
+func (x *transferFileDownloadServer) Send(m *Chunk) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // TransferFile_ServiceDesc is the grpc.ServiceDesc for TransferFile service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -133,6 +191,11 @@ var TransferFile_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "Upload",
 			Handler:       _TransferFile_Upload_Handler,
 			ClientStreams: true,
+		},
+		{
+			StreamName:    "Download",
+			Handler:       _TransferFile_Download_Handler,
+			ServerStreams: true,
 		},
 	},
 	Metadata: "proto/transfer_file.proto",
